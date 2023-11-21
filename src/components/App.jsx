@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 
 import { Main } from './Helper/Layout';
@@ -11,89 +11,76 @@ import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Loader } from './Loader/Loader';
 import { Button } from './Button/Button';
 
-export class App extends Component {
-  state = {
-    images: [],
-    query: '',
-    page: 1,
-    totalImages: 0,
-    isLoading: false,
-  };
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalImages, setTotalImages] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
-  async componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.query !== this.state.query ||
-      prevState.page !== this.state.page
-    ) {
+  useEffect(() => {
+    async function getImages() {
       try {
-        this.setState({ isLoading: true });
+        setIsLoading(true);
 
-        const trimmedQuery = this.state.query.split('/').pop().trim();
+        const normalQuery = query.split('/').pop().trim();
 
-        if (trimmedQuery === '') {
+        if (normalQuery === '') {
           toast.error('Please enter key words for search');
           return;
         }
 
-        const initialParams = {
-          q: trimmedQuery,
+        const apiParams = {
+          q: normalQuery,
           image_type: 'photo',
           orientation: 'horizontal',
-          page: this.state.page,
+          page: page,
           per_page: 12,
         };
-        const initialImages = await fetchImages(initialParams);
-        if (initialImages.total === 0) {
+
+        const newImages = await fetchImages(apiParams);
+
+        if (newImages.total === 0) {
           toast.error(
             'Sorry, there are no images matching your search query. Please try again.'
           );
           return;
         } else {
-          this.setState(prevState => ({
-            images: [...prevState.images, ...initialImages.hits],
-            totalImages: initialImages.totalHits,
-          }));
-          this.setState({ error: false });
+          setImages(prevImages => [...prevImages, ...newImages.hits]);
+          setTotalImages(newImages.totalHits);
         }
       } catch (error) {
         toast.error('Oops! Something went wrong. Please try again later.');
       } finally {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       }
     }
-  }
 
-  addQuery = newQuery => {
-    this.setState({
-      query: `${Date.now()}/${newQuery.query}`,
-      page: 1,
-      images: [],
-    });
+    getImages();
+  }, [query, page]);
+
+  const addQuery = newQuery => {
+    setQuery(`${Date.now()}/${newQuery.query}`);
+    setPage(1);
+    setImages([]);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => {
-      return {
-        page: prevState.page + 1,
-      };
-    });
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  render() {
-    const { images, isLoading, totalImages } = this.state;
-    return (
-      <>
-        <Searchbar addQuery={this.addQuery} />
-        <Main>
-          {images.length > 0 && <ImageGallery images={images} />}
-          {isLoading && <Loader />}
-          {images.length >= 12 && totalImages > images.length && (
-            <Button loadMore={this.handleLoadMore} />
-          )}
-          <GlobalStyle />
-          <Toaster position="top-right" />
-        </Main>
-      </>
-    );
-  }
-}
+  return (
+    <>
+      <Searchbar addQuery={addQuery} />
+      <Main>
+        {images.length > 0 && <ImageGallery images={images} />}
+        {isLoading && <Loader />}
+        {images.length >= 12 && totalImages > images.length && (
+          <Button loadMore={handleLoadMore} />
+        )}
+        <GlobalStyle />
+        <Toaster position="top-right" />
+      </Main>
+    </>
+  );
+};
