@@ -26,7 +26,9 @@ export const App = () => {
         const normalQuery = query.split('/').pop().trim();
 
         if (normalQuery === '') {
-          toast.error('Please enter key words for search');
+          toast('Please enter key words for search', {
+            icon: '📝',
+          });
           return;
         }
 
